@@ -5,6 +5,8 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
+import MinecraftModel from '@/components/MinecraftModel';
+import * as THREE from 'three';
 
 const CANVAS_SIZE = 64;
 const PIXEL_SIZE = 8;
@@ -20,6 +22,7 @@ const Index = () => {
   const [brushSize, setBrushSize] = useState(1);
   const [selectedLayer, setSelectedLayer] = useState<Layer>('all');
   const [showGrid, setShowGrid] = useState(true);
+  const [skinTexture, setSkinTexture] = useState<THREE.Texture | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -35,6 +38,10 @@ const Index = () => {
   useEffect(() => {
     initializeCanvas();
   }, [showGrid]);
+
+  useEffect(() => {
+    updateTexture();
+  }, []);
 
   const initializeCanvas = () => {
     const canvas = canvasRef.current;
@@ -60,6 +67,19 @@ const Index = () => {
         ctx.stroke();
       }
     }
+
+    updateTexture();
+  };
+
+  const updateTexture = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+    setSkinTexture(texture);
   };
 
   const drawPixel = (x: number, y: number, color: string) => {
@@ -78,6 +98,7 @@ const Index = () => {
         }
       }
     }
+    updateTexture();
   };
 
   const getPixelColor = (x: number, y: number): string => {
@@ -114,6 +135,7 @@ const Index = () => {
 
       stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
     }
+    updateTexture();
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -149,6 +171,10 @@ const Index = () => {
     handleCanvasClick(e);
   };
 
+  const handlePixelPaint = (face: string, x: number, y: number) => {
+    drawPixel(x, y, selectedColor);
+  };
+
   const clearCanvas = () => {
     initializeCanvas();
   };
@@ -182,6 +208,7 @@ const Index = () => {
 
         ctx.clearRect(0, 0, CANVAS_SIZE * PIXEL_SIZE, CANVAS_SIZE * PIXEL_SIZE);
         ctx.drawImage(img, 0, 0, CANVAS_SIZE * PIXEL_SIZE, CANVAS_SIZE * PIXEL_SIZE);
+        updateTexture();
       };
       img.src = event.target?.result as string;
     };
@@ -290,7 +317,7 @@ const Index = () => {
                 </Card>
 
                 <Card className="p-4">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between">
                     <h3 className="font-semibold">Сетка</h3>
                     <Button
                       variant="outline"
@@ -303,10 +330,10 @@ const Index = () => {
                 </Card>
               </div>
 
-              <div>
+              <div className="space-y-4">
                 <Card className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold">Редактор скина</h2>
+                    <h2 className="text-xl font-semibold">3D Модель</h2>
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={uploadSkin}>
                         <Icon name="Upload" size={16} className="mr-1" />
@@ -319,18 +346,22 @@ const Index = () => {
                     </div>
                   </div>
                   
-                  <div className="flex justify-center">
-                    <canvas
-                      ref={canvasRef}
-                      width={CANVAS_SIZE * PIXEL_SIZE}
-                      height={CANVAS_SIZE * PIXEL_SIZE}
-                      className="border-2 border-border rounded-lg cursor-crosshair shadow-lg"
-                      onClick={handleCanvasClick}
-                      onMouseDown={() => setIsDrawing(true)}
-                      onMouseUp={() => setIsDrawing(false)}
-                      onMouseLeave={() => setIsDrawing(false)}
-                      onMouseMove={handleMouseMove}
+                  <div className="aspect-square bg-muted rounded-lg overflow-hidden border-2 border-border">
+                    <MinecraftModel
+                      skinTexture={skinTexture}
+                      onPixelPaint={handlePixelPaint}
+                      selectedColor={selectedColor}
+                      currentTool={currentTool}
+                      isDrawing={isDrawing}
+                      setIsDrawing={setIsDrawing}
                     />
+                  </div>
+
+                  <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Icon name="Info" size={16} />
+                      <span>Кликай по модели чтобы рисовать. Вращай мышкой.</span>
+                    </div>
                   </div>
                   
                   <input
@@ -341,20 +372,27 @@ const Index = () => {
                     onChange={handleFileUpload}
                   />
                 </Card>
+
+                <Card className="p-4">
+                  <h3 className="font-semibold mb-3">2D Редактор</h3>
+                  <div className="flex justify-center">
+                    <canvas
+                      ref={canvasRef}
+                      width={CANVAS_SIZE * PIXEL_SIZE}
+                      height={CANVAS_SIZE * PIXEL_SIZE}
+                      className="border-2 border-border rounded-lg cursor-crosshair shadow-sm max-w-full"
+                      style={{ width: '100%', height: 'auto', imageRendering: 'pixelated' }}
+                      onClick={handleCanvasClick}
+                      onMouseDown={() => setIsDrawing(true)}
+                      onMouseUp={() => setIsDrawing(false)}
+                      onMouseLeave={() => setIsDrawing(false)}
+                      onMouseMove={handleMouseMove}
+                    />
+                  </div>
+                </Card>
               </div>
 
               <div className="space-y-4">
-                <Card className="p-4">
-                  <h3 className="font-semibold mb-3">Превью 3D</h3>
-                  <div className="aspect-square bg-muted rounded-lg flex items-center justify-center mb-4">
-                    <div className="text-center text-muted-foreground">
-                      <Icon name="Box" size={64} className="mx-auto mb-3 opacity-50" />
-                      <p className="text-sm">3D модель</p>
-                      <p className="text-xs mt-1">персонажа</p>
-                    </div>
-                  </div>
-                </Card>
-
                 <Card className="p-4">
                   <h3 className="font-semibold mb-3">Палитра</h3>
                   <div className="space-y-3">
