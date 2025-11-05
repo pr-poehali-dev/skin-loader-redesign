@@ -1,5 +1,5 @@
-import { useRef, useState, useEffect } from 'react';
-import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber';
+import { useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -35,13 +35,13 @@ const MinecraftCharacter = ({
     if (leftLegRef.current) leftLegRef.current.rotation.x = Math.sin(t) * 0.3;
   });
 
-  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
+  const handlePointerDown = (e: any) => {
     e.stopPropagation();
     setIsDrawing(true);
     handlePaint(e);
   };
 
-  const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
+  const handlePointerMove = (e: any) => {
     if (!isDrawing) return;
     e.stopPropagation();
     handlePaint(e);
@@ -51,7 +51,7 @@ const MinecraftCharacter = ({
     setIsDrawing(false);
   };
 
-  const handlePaint = (e: ThreeEvent<PointerEvent>) => {
+  const handlePaint = (e: any) => {
     if (!onPixelPaint || currentTool !== 'pencil') return;
 
     const uv = e.uv;
